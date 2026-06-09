@@ -65,6 +65,26 @@ This project involved two distinct mistakes that were caught, diagnosed, and fix
 **Fix:** Built a custom recursive walk-forward forecasting engine. Each week's prediction is injected back into the dataset as if it were a real sales value, enabling lag and rolling features to be computed for the following week. This simulates real-world deployment conditions.
 
 ---
+## 📦 Dataset
+
+**Source:** [Walmart Recruiting — Store Sales Forecasting](https://www.kaggle.com/c/walmart-recruiting-store-sales-forecasting) — Kaggle Competition
+
+| File | Description | Rows | Key Columns |
+|---|---|---|---|
+| `train.csv` | Historical weekly sales per Store–Dept | ~421,570 | Store, Dept, Date, Weekly_Sales, IsHoliday |
+| `test.csv` | Future weeks to predict (no Weekly_Sales) | ~115,064 | Store, Dept, Date, IsHoliday |
+| `stores.csv` | Metadata for all 45 stores | 45 | Store, Type (A/B/C), Size |
+| `features.csv` | External indicators per store per week | ~8,190 | Temperature, Fuel_Price, MarkDown1–5, CPI, Unemployment |
+
+**Coverage:** 45 stores · 99 departments · 2010-02-05 to 2012-11-01 · ~2.5 years of weekly data
+
+**Holiday weeks tracked:** Super Bowl · Labor Day · Thanksgiving · Christmas
+*(Holiday weeks are weighted 5× higher in Kaggle's official evaluation metric)*
+
+**Notable data challenges handled:**
+- `MarkDown` data only available after November 2011 — missing values filled with `0`
+- `CPI` and `Unemployment` missing for future test weeks — handled via forward-fill
+- Store Type is anonymized (A / B / C) representing different store formats and sizes
 
 ## Architecture Overview
 
