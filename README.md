@@ -6,7 +6,7 @@ A retail demand forecasting system that predicts weekly Walmart store sales acro
 
 Unlike traditional single-series forecasting projects, this system implements a **global forecasting approach**: a single model simultaneously learns sales patterns across all Walmart store and department combinations.
 
-
+---
 
 ## Problem Statement
 
@@ -28,6 +28,7 @@ This project addresses these challenges by building an end-to-end ML forecasting
 - **Temporal Leakage Caught & Fixed** — detected artificially inflated R² ≈ 0.98, diagnosed root cause, and redesigned the pipeline
 - **Rolling Feature Leakage Fixed** — corrected `rolling().mean()` to `shift(1).rolling()` to prevent current-week data from contaminating features
 - **Comparative Model Benchmarking** — Random Forest, XGBoost, and LightGBM evaluated under identical leakage-free conditions
+- **Neural Network Baseline Explored** — a feedforward neural network was implemented and benchmarked against the tree-based models to empirically test whether deep learning offers an advantage on this structured, tabular dataset
 - **Modular Pipeline** — preprocessing, feature engineering, and forecasting cleanly separated into reusable components
 
 ---
@@ -65,6 +66,7 @@ This project involved two distinct mistakes that were caught, diagnosed, and fix
 **Fix:** Built a custom recursive walk-forward forecasting engine. Each week's prediction is injected back into the dataset as if it were a real sales value, enabling lag and rolling features to be computed for the following week. This simulates real-world deployment conditions.
 
 ---
+
 ## 📦 Dataset
 
 **Source:** [Walmart Recruiting — Store Sales Forecasting](https://www.kaggle.com/c/walmart-recruiting-store-sales-forecasting) — Kaggle Competition
@@ -223,7 +225,7 @@ Train/Validation Split → Feature Engineering on Train Only → Recursive Forec
 
 ## Model Training & Hyperparameter Decisions
 
-Three models were trained using `sklearn.Pipeline` with `OneHotEncoder` for `Type` and `IsHoliday`.
+Three tree-based models were trained using `sklearn.Pipeline` with `OneHotEncoder` for `Type` and `IsHoliday`.
 
 Hyperparameters were tuned manually through experimentation rather than automated search (Optuna, GridSearch). Key observation during tuning:
 
@@ -258,6 +260,34 @@ LightGBM was selected as the final forecasting model based on:
 
 ---
 
+## Neural Network Experiment: Feedforward Deep Learning Baseline
+
+After completing the three-course Deep Learning Specialization, a feedforward neural network (FFNN) was implemented as an exploratory experiment to test whether a deep learning approach could match or outperform the tree-based ensembles on this dataset.
+
+**Setup:**
+- Architecture: fully connected feedforward network with 5 hidden layers
+- Trained on the same leakage-free, feature-engineered dataset used for the tree-based models
+- Implemented and run in a dedicated notebook (`neural_network_experiment.ipynb`) kept separate from the production pipeline
+
+**Outcome:**
+- On the available local compute, a single training run took upwards of **2.5 hours** without reaching convergence
+- Given the size of the dataset (~3,300 Store–Dept series, hundreds of thousands of rows) and the depth of the network, training time and resource requirements were well beyond what was practical for this project's hardware
+- The model was not able to complete training to a usable state, and was therefore **not selected** as a candidate for the final forecasting pipeline
+
+**Why tree-based ensembles were kept as the production approach:**
+
+This experiment reinforced a practical, empirically-observed conclusion rather than a purely theoretical one:
+
+- **Tabular, structured data favors tree-based methods.** Gradient-boosted and bagged trees (XGBoost, LightGBM, Random Forest) natively handle heterogeneous, structured tabular features — mixed categorical/numerical columns, non-linear interactions, and missing values — without requiring the extensive preprocessing, normalization, and architecture tuning that neural networks typically need.
+- **Compute efficiency.** Tree ensembles trained on the full dataset in a fraction of the time required by the FFNN, with no GPU dependency, making them far more practical given the available hardware.
+- **No clear accuracy advantage from depth.** The added representational capacity of a 5-hidden-layer network did not translate into a usable result under the same compute budget, whereas the tree-based models converged reliably and produced strong, leakage-free validation metrics (R² up to 95.55%).
+
+This is consistent with a well-known pattern in applied ML: **for structured/tabular data problems, tree-based ensemble methods generally outperform deep neural networks in both accuracy and compute efficiency**, and this project's own experiment served as a firsthand, practical confirmation of that pattern rather than a hyperparameter or implementation failure of the neural network itself.
+
+The neural network notebook has been retained in the repository as a documented experiment, showing the exploration path and reasoning behind the final model choice.
+
+---
+
 ## Key Learnings
 
 **1. Feature engineering matters more than model complexity**
@@ -275,6 +305,9 @@ Future features don't exist. You have to simulate the real world during evaluati
 **5. Debugging is the majority of the work**
 A large portion of this project was diagnosing incorrect pipelines, not training models.
 
+**6. Model choice should be validated empirically, not assumed**
+Rather than assuming tree-based models were the right choice, a feedforward neural network was actually implemented and tested. The compute cost and lack of convergence within a reasonable time budget provided direct, firsthand evidence for choosing tree-based ensembles over deep learning on this tabular dataset.
+
 ---
 
 ## 🛠️ Tech Stack
@@ -283,6 +316,7 @@ A large portion of this project was diagnosing incorrect pipelines, not training
 ![Scikit-Learn](https://img.shields.io/badge/scikit--learn-F7931E?style=for-the-badge&logo=scikit-learn&logoColor=white)
 ![XGBoost](https://img.shields.io/badge/XGBoost-EB4C42?style=for-the-badge&logo=xgboost&logoColor=white)
 ![LightGBM](https://img.shields.io/badge/LightGBM-02569B?style=for-the-badge&logo=lightgbm&logoColor=white)
+![PyTorch](https://img.shields.io/badge/PyTorch-EE4C2C?style=for-the-badge&logo=pytorch&logoColor=white)
 ![Pandas](https://img.shields.io/badge/Pandas-150458?style=for-the-badge&logo=pandas&logoColor=white)
 ![NumPy](https://img.shields.io/badge/NumPy-013243?style=for-the-badge&logo=numpy&logoColor=white)
 ![Matplotlib](https://img.shields.io/badge/Matplotlib-11557C?style=for-the-badge&logo=matplotlib&logoColor=white)
@@ -304,6 +338,9 @@ Walmart-Store-Weekly-Sales-Forecasting/
 │
 ├── outputs/
 │   └── metrics_table.png
+│
+├── notebooks/
+│   └── neural_network_experiment.ipynb
 │
 ├── src/
 │   ├── feature_creation.py
@@ -346,7 +383,7 @@ python main.py
 ## 🔮 Future Roadmap
 
 - [ ] Optimize recursive forecasting loop — recompute features only for current week rows instead of full DataFrame
-- [ ] Deep learning forecasting with LSTM or Temporal Fusion Transformer
+- [ ] Revisit deep learning approaches (LSTM / Temporal Fusion Transformer) with access to GPU compute, rather than a plain FFNN on CPU
 - [ ] MLOps pipeline with automated retraining, monitoring, and drift detection
 - [ ] Probabilistic forecasting with prediction intervals
 
@@ -356,7 +393,7 @@ python main.py
 
 > *"Walmart Sales Prediction Based on Machine Learning" — DR Press*
 
-Domain understanding and methodological context were drawn from this paper. All implementation — including the recursive forecasting engine, leakage detection and resolution, rolling feature correction, and global multi-series pipeline — was independently developed through experimentation.
+Domain understanding and methodological context were drawn from this paper. All implementation — including the recursive forecasting engine, leakage detection and resolution, rolling feature correction, the neural network experiment, and the global multi-series pipeline — was independently developed through experimentation.
 
 ---
 
